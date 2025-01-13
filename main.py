@@ -37,12 +37,12 @@ class OBJLoader:
                 
             elif values[0] == 'f':  # Face
                 # Handle different face formats
-                face = []
+
                 for v in values[1:]:
                     w = v.split('/')
                     # OBJ indices are 1-based, converting to 0-based
-                    face.append(int(w[0])-1)
-                self.faces.append(face)
+                    face = int(w[0])-1
+                    self.faces.append(face)
     
     def to_taichi_fields(self):
         # Convert to numpy arrays first
@@ -50,8 +50,10 @@ class OBJLoader:
         faces_np = np.array(self.faces, dtype=np.int32)
         
         # Create Taichi fields
-        vertex_field = ti.Vector.field(3, dtype=ti.f32, shape=len(self.vertices))
-        face_field = ti.Vector.field(3, dtype=ti.i32, shape=len(self.faces))
+        vertex_count = len(self.vertices)
+        face_count = len(self.faces)
+        vertex_field = ti.Vector.field(3, dtype=ti.f32, shape=vertex_count)
+        face_field = ti.field(dtype=ti.i32, shape=face_count)
         
         # Copy data to fields
         vertex_field.from_numpy(vertices_np)
@@ -81,12 +83,13 @@ camera.position(5, 2, 2)
 
 objLoader = OBJLoader()
 objLoader.load_obj("keqing.obj")
+vertices, indices = objLoader.to_taichi_fields()
 
 while window.running:
     if window.get_event(ti.ui.PRESS):
         if window.event.key == 'r': reset()
         elif window.event.key in [ti.ui.ESCAPE]: break
-    camera.track_user_inputs(window, movement_speed=0.03, hold_key=ti.ui.RMB)
+    camera.track_user_inputs(window, movement_speed=0.3, hold_key=ti.ui.RMB)
     scene.set_camera(camera)
     scene.ambient_light((0.8, 0.8, 0.8))
     scene.point_light(pos=(0.5, 1.5, 1.5), color=(1, 1, 1))
@@ -94,5 +97,9 @@ while window.running:
     scene.particles(particles_pos, color = (0.68, 0.26, 0.19), radius = 0.1)
     # Draw 3d-lines in the scene
     scene.lines(points_pos, color = (0.28, 0.68, 0.99), width = 5.0)
+    #scene.mesh(vertices_3d, indices, normals, color, per_vertex_color, vertex_offset=0, vertex_count=10, index_offset=0, index_count=10, show_wireframe=True)
+
+    scene.mesh(vertices, indices)
+
     canvas.scene(scene)
     window.show()
